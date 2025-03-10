@@ -14,7 +14,7 @@ class User extends Model
     public $incrementing = false;
     protected $keyType = 'string';
 
-    protected $fillable = ['nama', 'no_hp', 'password', 'foto_ktp', 'role'];
+    protected $fillable = ['uid_user','nama', 'no_hp', 'password', 'foto_ktp', 'role'];
 
     public function truks() {
         return $this->hasMany(Truk::class, 'uid_user', 'uid_user');
