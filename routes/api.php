@@ -13,5 +13,7 @@ Route::get('/user', function (Request $request) {
 // route untuk user
 Route::get('/user/search', [UserController::class, 'search']);
 Route::resource('user', UserController::class);
+
 // route untuk truk
 Route::resource('truk', TrukController::class);
+Route::get('/download-qr/{filename}', [TrukController::class, 'downloadQR'])->name('download.qr');
