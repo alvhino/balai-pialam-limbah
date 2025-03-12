@@ -63,7 +63,7 @@ class UserController extends Controller
         } catch (Exception $e) {
             return response()->json([
                 'status' => 500,
-                'message' => 'Gagal mengambil user',
+                'message' => 'Gagal mengambil data user',
                 'error' => $e->getMessage(),
             ], 500);
         }
