@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use App\Models\Kunjungan;
+use Illuminate\Validation\ValidationException;
+use Carbon\Carbon;
 
 class KunjunganController extends Controller
 {
@@ -30,7 +32,7 @@ class KunjunganController extends Controller
                 });
             }
     
-            $kunjungans = $query->get()->map(function ($kunjungan) {
+            $kunjungans = $query->get()->map(function ($kunjungan,$index) {
                 $jam = $kunjungan->jam_kunjungan;
                 $jamMasuk = $jam['masuk'] ?? null;
                 $jamKeluar = $jam['keluar'] ?? null;
@@ -43,6 +45,7 @@ class KunjunganController extends Controller
                 }
     
                 return [
+                    'no' => $index + 1,
                     'nopol' => $kunjungan->truk->input_nopol ?? '-',
                     'nama_supir' => $kunjungan->truk->user->nama ?? '-',
                     'tanggal' => $kunjungan->tanggal,
@@ -78,8 +81,6 @@ class KunjunganController extends Controller
             ]);
         }
     }
-    
-    
 
     public function store(Request $request)
     {
@@ -88,7 +89,7 @@ class KunjunganController extends Controller
                 'uid_truk' => 'required|uuid|exists:truks,uid_truk',
             ]);
     
-            $today = now('Asia/Jakarta')->toDateString();
+            $today = Carbon::now('Asia/Jakarta')->toDateString();
     
             $sudahAda = Kunjungan::where('uid_truk', $request->uid_truk)
                 ->whereDate('tanggal', $today)
@@ -102,28 +103,35 @@ class KunjunganController extends Controller
                 ], 409);
             }
     
-            $now = now('Asia/Jakarta')->format('H:i:s');
+            $jamMasuk = Carbon::now('Asia/Jakarta')->format('H:i:s');
     
-            $kunjungan = new Kunjungan;
-            $kunjungan->uid_kunjungan = Str::uuid();
-            $kunjungan->uid_truk = $request->uid_truk;
-            $kunjungan->tanggal = $today;
-            $kunjungan->status = 'masuk';
-            $kunjungan->jam_kunjungan = [
-                'masuk' => $now
-            ];
-            $kunjungan->save();
+            $kunjungan = Kunjungan::create([
+                'uid_kunjungan' => Str::uuid(),
+                'uid_truk' => $request->uid_truk,
+                'tanggal' => $today,
+                'status' => 'masuk',
+                'jam_kunjungan' => [
+                    'masuk' => $jamMasuk
+                ]
+            ]);
     
             return response()->json([
                 'status' => 201,
-                'message' => 'Kunjungan berhasil disimpan',
+                'message' => 'Kunjungan berhasil disimpan.',
                 'data' => $kunjungan
-            ]);
+            ], 201);
+    
+        } catch (ValidationException $e) {
+            return response()->json([
+                'status' => 422,
+                'message' => 'Validasi gagal.',
+                'errors' => $e->errors(),
+            ], 422);
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 500,
                 'message' => 'Terjadi kesalahan saat menyimpan data kunjungan.',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
