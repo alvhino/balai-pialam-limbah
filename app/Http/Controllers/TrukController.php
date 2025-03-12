@@ -43,9 +43,11 @@ class TrukController extends Controller
                     'no'          => $index + 1,
                     'input_nopol' => $truk->input_nopol,
                     'volume'      => $truk->volume,
-                    'nama_user'   => $truk->user->nama ?? 'Tidak diketahui',
+                    'nama_supir'   => $truk->user->nama ?? 'Tidak diketahui',
                     'foto_truk'   => $truk->foto_truk,
                     'qr_code'     => $truk->qr_code,
+                    'registrasi_user' => $truk->user->created_at->format('Y-m-d H:i:s'),
+                    'registrasi_truk' => $truk->created_at->format('Y-m-d H:i:s'),
                 ];
             });
     
