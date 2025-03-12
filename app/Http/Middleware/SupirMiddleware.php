@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Support\Facades\Auth;
 
 class SupirMiddleware
 {
@@ -15,6 +16,12 @@ class SupirMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // Periksa apakah pengguna sudah login dan memiliki peran sebagai supir
+        if (!Auth::check() || Auth::user()->role !== 'supir') {
+            Auth::logout(); // Logout pengguna jika tidak sesuai
+            return redirect()->route('login')->with('error', 'Anda tidak memiliki akses sebagai supir.');
+        }
+
         return $next($request);
     }
 }
