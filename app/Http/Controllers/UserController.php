@@ -12,29 +12,30 @@ class UserController extends Controller
 {
     public function index()
     {
-        try {
-            $users = User::all()->map(function ($user) {
-                return [
-                    'uid_user' => $user->uid_user,
-                    'nama' => $user->nama,
-                    'no_hp' => $user->no_hp,
-                    'role' => $user->role,
-                    'foto_ktp' => asset('storage/' . $user->foto_ktp),
-                ];
-            });
+    try {
+        $users = User::all()->map(function ($user) {
+            return [
+                'uid_user' => $user->uid_user,
+                'nama' => $user->nama,
+                'no_hp' => $user->no_hp,
+                'role' => $user->role,
+                'foto_ktp' => asset('storage/' . $user->foto_ktp),
+                'tgl_registrasi' => $user->created_at->format('Y-m-d H:i:s'),
+            ];
+        });
 
-            return response()->json([
-                'status' => 200,
-                'message' => 'Berhasil menampilkan semua user',
-                'data' => $users,
-            ], 200);
-        } catch (Exception $e) {
-            return response()->json([
-                'status' => 500,
-                'message' => 'Gagal menampilkan user',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
+        return response()->json([
+            'status' => 200,
+            'message' => 'Berhasil menampilkan semua user',
+            'data' => $users,
+        ], 200);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 500,
+            'message' => 'Gagal menampilkan user',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
     }
 
     public function show($uid_user)
@@ -58,12 +59,13 @@ class UserController extends Controller
                     'no_hp' => $user->no_hp,
                     'role' => $user->role,
                     'foto_ktp' => asset('storage/' . $user->foto_ktp),
+                    'tgl_registrasi' => $user->created_at->format('Y-m-d H:i:s'),
                 ],
             ]);
         } catch (Exception $e) {
             return response()->json([
                 'status' => 500,
-                'message' => 'Gagal mengambil user',
+                'message' => 'Gagal mengambil data user',
                 'error' => $e->getMessage(),
             ], 500);
         }
@@ -154,6 +156,7 @@ class UserController extends Controller
                         'no_hp' => $user->no_hp,
                         'role' => $user->role,
                         'foto_ktp' => asset('storage/' . $user->foto_ktp),
+                        'tgl_registrasi' => $user->created_at->format('Y-m-d H:i:s'),
                     ];
                 }),
             ]);
