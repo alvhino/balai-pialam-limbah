@@ -308,5 +308,4 @@ class TrukController extends Controller
         }
     }
     
-
 }
