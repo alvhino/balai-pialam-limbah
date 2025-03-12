@@ -9,7 +9,8 @@ use App\Models\Kunjungan;
 class KunjunganController extends Controller
 {
     public function store(Request $request)
-    {
+{
+    try {
         $request->validate([
             'uid_truk' => 'required|uuid|exists:truks,uid_truk',
         ]);
@@ -31,5 +32,13 @@ class KunjunganController extends Controller
             'message' => 'Kunjungan berhasil disimpan',
             'data' => $kunjungan
         ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 500,
+            'message' => 'Terjadi kesalahan saat menyimpan data kunjungan.',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
+
 }
