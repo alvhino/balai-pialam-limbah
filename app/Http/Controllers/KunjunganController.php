@@ -32,28 +32,43 @@ class KunjunganController extends Controller
     
             $kunjungans = $query->get()->map(function ($kunjungan) {
                 $jam = $kunjungan->jam_kunjungan;
+                $jamMasuk = $jam['masuk'] ?? null;
+                $jamKeluar = $jam['keluar'] ?? null;
+                $durasi = '-';
+    
+                if ($jamMasuk && $jamKeluar) {
+                    $masuk = \Carbon\Carbon::createFromFormat('H:i:s', $jamMasuk);
+                    $keluar = \Carbon\Carbon::createFromFormat('H:i:s', $jamKeluar);
+                    $durasi = $masuk->diffInMinutes($keluar) . ' menit';
+                }
     
                 return [
                     'nopol' => $kunjungan->truk->input_nopol ?? '-',
                     'nama_supir' => $kunjungan->truk->user->nama ?? '-',
                     'tanggal' => $kunjungan->tanggal,
-                    'jam_masuk' => $jam['masuk'] ?? '-',
-                    'jam_keluar' => $jam['keluar'] ?? '-',
+                    'status' => $kunjungan->status,
+                    'jam_masuk' => $jamMasuk ?? '-',
+                    'jam_keluar' => $jamKeluar ?? '-',
+                    'durasi' => $durasi,
                 ];
             });
+    
+            $jumlahBelumKeluar = Kunjungan::where('status', '!=', 'keluar')->count();
     
             if ($kunjungans->isEmpty()) {
                 return response()->json([
                     'status' => 404,
                     'message' => 'Data kunjungan tidak ditemukan',
-                    'data' => []
+                    'data' => [],
+                    'jumlah_truk_di_dalam' => 0
                 ], 404);
             }
     
             return response()->json([
                 'status' => 200,
                 'message' => 'Berhasil menampilkan data kunjungan',
-                'data' => $kunjungans
+                'data' => $kunjungans,
+                'jumlah_truk_di_dalam' => $jumlahBelumKeluar
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -64,38 +79,54 @@ class KunjunganController extends Controller
         }
     }
     
+    
 
     public function store(Request $request)
-{
-    try {
-        $request->validate([
-            'uid_truk' => 'required|uuid|exists:truks,uid_truk',
-        ]);
-
-        $now = now('Asia/Jakarta')->format('H:i:s');
-
-        $kunjungan = new Kunjungan;
-        $kunjungan->uid_kunjungan = Str::uuid();
-        $kunjungan->uid_truk = $request->uid_truk;
-        $kunjungan->tanggal = now('Asia/Jakarta')->toDateString();
-        $kunjungan->status = 'masuk';
-        $kunjungan->jam_kunjungan = [
-            'masuk' => $now
-        ];        
-        $kunjungan->save();
-
-        return response()->json([
-            'status' => 201,
-            'message' => 'Kunjungan berhasil disimpan',
-            'data' => $kunjungan
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'status' => 500,
-            'message' => 'Terjadi kesalahan saat menyimpan data kunjungan.',
-            'error' => $e->getMessage()
-        ], 500);
+    {
+        try {
+            $request->validate([
+                'uid_truk' => 'required|uuid|exists:truks,uid_truk',
+            ]);
+    
+            $today = now('Asia/Jakarta')->toDateString();
+    
+            $sudahAda = Kunjungan::where('uid_truk', $request->uid_truk)
+                ->whereDate('tanggal', $today)
+                ->where('status', '!=', 'keluar')
+                ->exists();
+    
+            if ($sudahAda) {
+                return response()->json([
+                    'status' => 409,
+                    'message' => 'Truk ini sudah tercatat masuk hari ini dan belum keluar.',
+                ], 409);
+            }
+    
+            $now = now('Asia/Jakarta')->format('H:i:s');
+    
+            $kunjungan = new Kunjungan;
+            $kunjungan->uid_kunjungan = Str::uuid();
+            $kunjungan->uid_truk = $request->uid_truk;
+            $kunjungan->tanggal = $today;
+            $kunjungan->status = 'masuk';
+            $kunjungan->jam_kunjungan = [
+                'masuk' => $now
+            ];
+            $kunjungan->save();
+    
+            return response()->json([
+                'status' => 201,
+                'message' => 'Kunjungan berhasil disimpan',
+                'data' => $kunjungan
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => 'Terjadi kesalahan saat menyimpan data kunjungan.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
-}
+    
 
 }
