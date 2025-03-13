@@ -16,12 +16,12 @@ class SupirMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Periksa apakah pengguna sudah login dan memiliki peran sebagai supir
-        if (!Auth::check() || Auth::user()->role !== 'supir') {
-            Auth::logout(); // Logout pengguna jika tidak sesuai
-            return redirect()->route('login')->with('error', 'Anda tidak memiliki akses sebagai supir.');
+        $user = Auth::user();
+        
+        if ($user && $user->role == "supir" ) {
+            return $next($request);
         }
 
-        return $next($request);
+        return response()->json(['message' => 'Forbidden!'], 403);
     }
 }

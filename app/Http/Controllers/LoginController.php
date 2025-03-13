@@ -3,38 +3,46 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 class LoginController extends Controller
 {
-    public function index()
+    public function login(Request $req)
     {
-        return view('login');
-    }
+        try {
+            $req->validate([
+                'no_hp' => 'required|numeric|digits_between:10,18',
+                'password' => 'required|string|min:6',
+            ]);
 
-    public function login(Request $request)
-    {
-        $request->validate([
-            'email' => 'required    ',
-            'password' => 'required'
-        ]);
+            $user = User::where('no_hp', $req->no_hp)->first();
 
-        if (Auth::attempt($request->only('email', 'password'))) {
-            $request->session()->regenerate();
-            return redirect()->intended(route('post.index'));
+            if (!$user) {
+                return response()->json([
+                    'message' => 'Login gagal! Pengguna tidak ditemukan.'
+                ], 404);
+            }
+
+            if (!Hash::check($req->password, $user->password)) {
+                return response()->json([
+                    'message' => 'Login gagal! Password salah.'
+                ], 401);
+            }
+
+            $token = $user->createToken('MyApp')->plainTextToken;
+
+            return response()->json([
+                'message' => 'Login berhasil.',
+                'data' => $user,
+                'token' => $token
+            ], 200);
+
+        } catch (\Throwable $th) {
+            return response()->json([
+                'errors' => $th->getMessage()
+            ], 500);
         }
-
-        return back()->withErrors(['error' => 'Email atau Password salah'])->withInput();
-    }
-
-
-    public function logout(Request $request)
-    {
-        Auth::logout();
-
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        return redirect()->route('login');
     }
 }
