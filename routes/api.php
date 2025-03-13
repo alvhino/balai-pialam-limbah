@@ -5,7 +5,7 @@ use App\Http\Controllers\TrukController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\KunjunganController;
 
-Route::post('/login', [LoginController::class, 'login']);
+Route::post('/login', [LoginController::class, 'login'])->name('login');
 Route::get('/logout', [LoginController::class, 'logout'])->name('logout');
 
 Route::middleware('LoginMiddleware')->group(function () {
@@ -29,4 +29,6 @@ Route::middleware('LoginMiddleware')->group(function () {
         Route::get('/download-qr/{filename}', [TrukController::class, 'downloadQR'])->name('download.qr');
         Route::resource('/kunjungan', KunjunganController::class);
     });
+
+    
 });

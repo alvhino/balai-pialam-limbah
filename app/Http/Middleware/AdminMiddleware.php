@@ -18,11 +18,11 @@ class AdminMiddleware
     {
         $user = auth('sanctum')->user();
 
-if ($user && $user->role === 'admin') {
+    if ($user && $user->role === 'admin') {
     return $next($request);
-}
+    }
 
-return response()->json(['message' => 'Forbidden!'], 403);
+    return response()->json(['message' => 'Forbidden!'], 403);
 
     }
 }
