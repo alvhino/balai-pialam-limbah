@@ -5,7 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
-
+use Illuminate\Support\Facades\Auth;
 class ExecutiveMiddleware
 {
     /**
@@ -17,19 +17,12 @@ class ExecutiveMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Periksa apakah user terautentikasi menggunakan token API
-        if (!Auth::guard('sanctum')->check()) {
-            return response()->json(['message' => 'Unauthorized'], 401);
+        $user = Auth::user();
+        
+        if ($user && $user->role == "executive" ) {
+            return $next($request);
         }
 
-        // Ambil user yang sedang login
-        $user = Auth::guard('sanctum')->user();
-
-        // Periksa apakah user memiliki peran 'executive'
-        if ($user->role !== 'executive') {
-            return response()->json(['message' => 'Forbidden: Anda tidak memiliki akses'], 403);
-        }
-
-        return $next($request);
+        return response()->json(['message' => 'Forbidden!'], 403);
     }
 }

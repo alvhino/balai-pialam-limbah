@@ -16,11 +16,13 @@ class AdminMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        //apakah pengguna sudah login dan memiliki role admin
-        if (!Auth::check() || Auth::user()->role !== 'admin') {
-            return redirect()->route('login')->with('error', 'Anda tidak memiliki akses sebagai admin.');
-        }
+        $user = auth('sanctum')->user();
 
-        return $next($request);
+    if ($user && $user->role === 'admin') {
+    return $next($request);
+    }
+
+    return response()->json(['message' => 'Forbidden!'], 403);
+
     }
 }
