@@ -8,20 +8,20 @@ use App\Http\Controllers\KunjunganController;
 Route::post('/login', [LoginController::class, 'login'])->name('login');
 Route::get('/logout', [LoginController::class, 'logout'])->name('logout');
 Route::get('/download-qr/{filename}', [TrukController::class, 'downloadQR'])->name('download.qr');
+Route::resource('user', UserController::class);
 
 Route::middleware('LoginMiddleware')->group(function () {
+    Route::resource('user', UserController::class);
 
     Route::middleware('AdminMiddleware')->group(function () {
         Route::get('/user/search', [UserController::class, 'search']);
         Route::resource('/truk', TrukController::class);
-        Route::resource('user', UserController::class);
         Route::resource('/kunjungan', KunjunganController::class);
     });
 
     Route::middleware('PetugasMiddleware')->group(function () {
         Route::get('/user/search', [UserController::class, 'search']);
         Route::resource('/kunjungan', KunjunganController::class);
-        Route::resource('user', UserController::class);
     });
 
 });

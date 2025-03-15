@@ -22,11 +22,11 @@ class TrukController extends Controller
     
             $truks = Truk::with('user')
                 ->when($searchNopol, function ($query, $searchNopol) {
-                    $query->where('input_nopol', 'like', '%' . $searchNopol . '%');
+                    $query->whereRaw('input_nopol ILIKE ?', ['%' . $searchNopol . '%']);
                 })
                 ->when($searchNama, function ($query, $searchNama) {
                     $query->whereHas('user', function ($q) use ($searchNama) {
-                        $q->where('nama', 'like', '%' . $searchNama . '%');
+                        $q->whereRaw('nama ILIKE ?', ['%' . $searchNama . '%']);
                     });
                 })
                 ->get();
@@ -40,15 +40,19 @@ class TrukController extends Controller
             }
     
             $data = $truks->map(function ($truk, $index) {
+                $qrPath = parse_url($truk->qr_code, PHP_URL_PATH);
+                $qrFilename = basename($qrPath);
+    
                 return [
-                    'no'          => $index + 1,
-                    'input_nopol' => $truk->input_nopol,
-                    'volume'      => $truk->volume,
-                    'nama_supir'   => $truk->user->nama ?? 'Tidak diketahui',
-                    'foto_truk'   => $truk->foto_truk,
-                    'qr_code'     => $truk->qr_code,
-                    'registrasi_user' => $truk->user->created_at->format('Y-m-d H:i:s'),
-                    'registrasi_truk' => $truk->created_at->format('Y-m-d H:i:s'),
+                    'no'               => $index + 1,
+                    'input_nopol'      => $truk->input_nopol,
+                    'volume'           => $truk->volume,
+                    'nama_supir'       => $truk->user->nama ?? 'Tidak diketahui',
+                    'foto_truk'        => $truk->foto_truk,
+                    'qr_code'          => $truk->qr_code,
+                    'registrasi_user'  => $truk->user->created_at->format('Y-m-d H:i:s'),
+                    'registrasi_truk'  => $truk->created_at->format('Y-m-d H:i:s'),
+                    'download_link'    => route('download.qr', ['filename' => $qrFilename])
                 ];
             });
     
@@ -57,11 +61,12 @@ class TrukController extends Controller
                 'message' => 'Data truk tersedia',
                 'data'    => $data
             ], 200);
-            
+    
         } catch (\Exception $e) {
             return response()->json([
                 'status'  => 500,
-                'message' => 'Terjadi kesalahan saat mengambil data truk'
+                'message' => 'Terjadi kesalahan saat mengambil data truk',
+                'error'   => $e->getMessage()
             ], 500);
         }
     }
@@ -107,34 +112,42 @@ class TrukController extends Controller
     
             $fotoPath = $request->file('foto_truk')->store('foto_truk', 'public');
             $fotoUrl  = url('storage/' . $fotoPath);
-    
-            $uid_temp = Str::uuid()->toString();
-            $qrResult = Builder::create()
-                ->writer(new PngWriter())
-                ->data($uid_temp)
-                ->size(300)
-                ->margin(10)
-                ->build();
-    
-            $qrFilename = $uid_temp . '.png';
-            $qrPath     = 'qr_code/' . $qrFilename;
-            Storage::disk('public')->put($qrPath, $qrResult->getString());
-            $qrUrl = url('storage/' . $qrPath);
+            $qrUrl = null;
     
             $result = DB::select('SELECT * FROM create_truk(?, ?, ?, ?, ?)', [
                 $request->nama_user,
                 $request->input_nopol,
                 $request->volume,
                 $fotoUrl,
-                $qrUrl,
+                $qrUrl
             ]);
     
             $truk = $result[0];
     
+            $qrData = $truk->uid_truk;
+            $qrName = $truk->uid_truk . '.png';
+            $qrPath = 'qr_code/' . $qrName;
+    
+            $qrResult = Builder::create()
+                ->writer(new PngWriter())
+                ->data($qrData)
+                ->size(300)
+                ->margin(10)
+                ->build();
+    
+            Storage::disk('public')->put($qrPath, $qrResult->getString());
+            $qrUrl = url('storage/' . $qrPath);
+    
+            DB::table('truks')->where('uid_truk', $truk->uid_truk)->update([
+                'qr_code' => $qrUrl
+            ]);
+    
+            $truk->qr_code = $qrUrl;
+    
             return response()->json([
                 'status'      => 201,
                 'message'     => 'Data Truk berhasil disimpan',
-                'download_qr' => route('download.qr', ['filename' => $qrFilename]),
+                'download_qr' => route('download.qr', ['filename' => $qrName]),
                 'data'        => $truk
             ], 201);
     
@@ -151,6 +164,8 @@ class TrukController extends Controller
                 $msg = 'User tidak ditemukan';
             } elseif (str_contains($msg, 'User sudah digunakan di truk lain')) {
                 $msg = 'User sudah digunakan di truk lain';
+            } elseif (str_contains($msg, 'Nopol sudah digunakan')) {
+                $msg = 'Nopol sudah digunakan';
             }
     
             return response()->json([

@@ -15,7 +15,7 @@ return new class extends Migration
             $table->uuid('uid_truk')->primary();
             $table->uuid('uid_user');
             $table->string('input_nopol', 30);
-            $table->string('qr_code', 255);
+            $table->string('qr_code', 255)->nullable();
             $table->decimal('volume', 10, 2);
             $table->string('foto_truk', 255);
             $table->timestamps();
