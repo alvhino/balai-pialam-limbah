@@ -13,10 +13,10 @@ return new class extends Migration
     {
         Schema::create('cek_ph', function (Blueprint $table) {
             $table->uuid('uid_ph')->primary();
-            $table->uuid('uid_kunjungan');
-            $table->decimal('total_ph', 10, 2);
+            $table->uuid('uid_truk');
+            $table->decimal('ph', 5, 2);
+            $table->decimal('biaya', 15, 2)->nullable();
             $table->string('foto', 255);
-            $table->decimal('tingkat_ph', 5, 2);
             $table->string('jenis_limbah', 255);
             $table->timestamps();
         });

@@ -17,56 +17,34 @@ class TrukController extends Controller
     public function index(Request $request)
     {
         try {
-            $searchNopol = $request->query('nopol');
-            $searchNama  = $request->query('nama_user');
+            $result = DB::selectOne(
+                "SELECT get_data_truk(?, ?) AS result",
+                [
+                    $request->query('nopol'), 
+                    $request->query('nama_supir') 
+                ]
+            );
     
-            $truks = Truk::with('user')
-                ->when($searchNopol, function ($query, $searchNopol) {
-                    $query->whereRaw('input_nopol ILIKE ?', ['%' . $searchNopol . '%']);
-                })
-                ->when($searchNama, function ($query, $searchNama) {
-                    $query->whereHas('user', function ($q) use ($searchNama) {
-                        $q->whereRaw('nama ILIKE ?', ['%' . $searchNama . '%']);
-                    });
-                })
-                ->get();
+            $response = json_decode($result->result, true);
     
-            if ($truks->isEmpty()) {
-                return response()->json([
-                    'status'  => 404,
-                    'message' => 'Data truk tidak ditemukan',
-                    'data'    => []
-                ], 404);
-            }
-    
-            $data = $truks->map(function ($truk, $index) {
-                $qrPath = parse_url($truk->qr_code, PHP_URL_PATH);
+            $data = collect($response['data'])->map(function ($truk, $index) {
+                $qrPath = parse_url($truk['qr_code'], PHP_URL_PATH);
                 $qrFilename = basename($qrPath);
     
-                return [
-                    'no'               => $index + 1,
-                    'input_nopol'      => $truk->input_nopol,
-                    'volume'           => $truk->volume,
-                    'nama_supir'       => $truk->user->nama ?? 'Tidak diketahui',
-                    'foto_truk'        => $truk->foto_truk,
-                    'qr_code'          => $truk->qr_code,
-                    'registrasi_user'  => $truk->user->created_at->format('Y-m-d H:i:s'),
-                    'registrasi_truk'  => $truk->created_at->format('Y-m-d H:i:s'),
-                    'download_link'    => route('download.qr', ['filename' => $qrFilename])
-                ];
+                return array_merge($truk, [
+                    'download_qr' => route('download.qr', ['filename' => $qrFilename])
+                ]);
             });
     
-            return response()->json([
-                'status'  => 200,
-                'message' => 'Data truk tersedia',
-                'data'    => $data
-            ], 200);
+            $response['data'] = $data;
+    
+            return response()->json($response, $response['status']);
     
         } catch (\Exception $e) {
             return response()->json([
-                'status'  => 500,
+                'status' => 500,
                 'message' => 'Terjadi kesalahan saat mengambil data truk',
-                'error'   => $e->getMessage()
+                'error' => $e->getMessage()
             ], 500);
         }
     }
@@ -300,7 +278,7 @@ class TrukController extends Controller
                 Storage::disk('public')->delete($qrPath);
             }
     
-            $truk->delete();
+            DB::statement("SELECT hapus_truk(?)", [$id]);
     
             return response()->json([
                 'status'  => 200,

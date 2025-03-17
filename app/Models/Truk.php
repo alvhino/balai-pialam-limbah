@@ -19,7 +19,12 @@ class Truk extends Model
         return $this->belongsTo(User::class, 'uid_user', 'uid_user');
     }
 
-    public function kunjungans() {
-        return $this->hasMany(Kunjungan::class, 'uid_truk', 'uid_truk');
+    public function cekPhs() {
+        return $this->hasMany(CekPh::class, 'uid_truk', 'uid_truk');
     }
+
+    public function volumes() {
+        return $this->hasMany(volume::class, 'uid_truk', 'uid_truk');
+    }
+    
 }

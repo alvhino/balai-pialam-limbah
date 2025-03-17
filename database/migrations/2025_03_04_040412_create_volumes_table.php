@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('volumes', function (Blueprint $table) {
             $table->uuid('uid_volume')->primary();
-            $table->uuid('uid_kunjungan');
+            $table->uuid('uid_truk');
             $table->string('foto', 255);
             $table->decimal('total_volume', 10, 2);
             $table->timestamps();

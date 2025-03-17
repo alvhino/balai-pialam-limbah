@@ -16,7 +16,7 @@ class UserSeeder extends Seeder
     {
         User::create([
             'uid_user' => Str::uuid(),
-            'nama' => 'Admin bejir',
+            'nama' => 'Admin',
             'no_hp' => '081234567891',
             'password' => Hash::make('admin123'),
             'foto_ktp' => 'http://localhost:8000/storage/foto_ktp/dummy.jpg',

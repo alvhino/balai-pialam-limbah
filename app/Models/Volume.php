@@ -14,9 +14,10 @@ class Volume extends Model
     public $incrementing = false;
     protected $keyType = 'string';
 
-    protected $fillable = ['uid_volume', 'uid_kunjungan', 'foto', 'total_volume'];
+    protected $fillable = ['uid_volume', 'uid_truk', 'foto', 'total_volume'];
 
-    public function kunjungan() {
-        return $this->belongsTo(Kunjungan::class, 'uid_kunjungan', 'uid_kunjungan');
+    public function truk()
+    {
+        return $this->belongsTo(Truk::class, 'uid_truk', 'uid_truk');
     }
 }
