@@ -59,7 +59,7 @@ class CekPhController extends Controller
         $fotoPath = $request->file('foto')->store('foto_ph', 'public');
         $fotoUrl = asset('storage/' . $fotoPath);
 
-        $result = DB::selectOne("SELECT simpan_ph(?, ?, ?, ?, ?) AS message", [
+        $result = DB::selectOne("SELECT create_ph(?, ?, ?, ?, ?) AS message", [
             $request->uid_truk,
             $request->ph,
             $request->biaya,
