@@ -79,81 +79,107 @@ class TrukController extends Controller
     }
     
     public function store(Request $request)
-    {
-        try {
-            $request->validate([
-                'nama_user'   => 'required|string',
-                'input_nopol' => 'required|string|max:30',
-                'volume'      => 'required|numeric',
-                'foto_truk'   => 'required|image|max:2048',
-            ]);
-    
-            $fotoPath = $request->file('foto_truk')->store('foto_truk', 'public');
-            $fotoUrl  = url('storage/' . $fotoPath);
-            $qrUrl = null;
-    
-            $result = DB::select('SELECT * FROM create_truk(?, ?, ?, ?, ?)', [
-                $request->nama_user,
-                $request->input_nopol,
-                $request->volume,
-                $fotoUrl,
-                $qrUrl
-            ]);
-    
-            $truk = $result[0];
-    
-            $qrData = $truk->uid_truk;
-            $qrName = $truk->uid_truk . '.png';
-            $qrPath = 'qr_code/' . $qrName;
-    
-            $qrResult = Builder::create()
-                ->writer(new PngWriter())
-                ->data($qrData)
-                ->size(300)
-                ->margin(10)
-                ->build();
-    
-            Storage::disk('public')->put($qrPath, $qrResult->getString());
-            $qrUrl = url('storage/' . $qrPath);
-    
-            DB::table('truks')->where('uid_truk', $truk->uid_truk)->update([
-                'qr_code' => $qrUrl
-            ]);
-    
-            $truk->qr_code = $qrUrl;
-    
+{
+    try {
+        $request->validate([
+            'nama_user'   => 'required|string',
+            'input_nopol' => 'required|string|max:30',
+            'volume'      => 'required|numeric',
+            'foto_truk'   => 'required|image|max:2048',
+        ]);
+
+        $user = DB::table('users')->where('nama', $request->nama_user)->first();
+        if (!$user) {
             return response()->json([
-                'status'      => 201,
-                'message'     => 'Data Truk berhasil disimpan',
-                'download_qr' => route('download.qr', ['filename' => $qrName]),
-                'data'        => $truk
-            ], 201);
-    
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'status'  => 422,
-                'message' => 'Validasi gagal',
-                'errors'  => $e->errors()
-            ], 422);
-        } catch (\Exception $e) {
-            $msg = $e->getMessage();
-    
-            if (str_contains($msg, 'User tidak ditemukan')) {
-                $msg = 'User tidak ditemukan';
-            } elseif (str_contains($msg, 'User sudah digunakan di truk lain')) {
-                $msg = 'User sudah digunakan di truk lain';
-            } elseif (str_contains($msg, 'Nopol sudah digunakan')) {
-                $msg = 'Nopol sudah digunakan';
-            }
-    
-            return response()->json([
-                'status'  => 500,
-                'message' => $msg
-            ], 500);
+                'status' => 404,
+                'message' => 'User tidak ditemukan'
+            ], 404);
         }
+
+        $existingTruk = DB::table('truks')->where('uid_user', $user->uid_user)->first();
+        if ($existingTruk) {
+            return response()->json([
+                'status' => 409,
+                'message' => 'User sudah memiliki truk'
+            ], 409);
+        }
+
+        $nopolUsed = DB::table('truks')->where('input_nopol', $request->input_nopol)->first();
+        if ($nopolUsed) {
+            return response()->json([
+                'status' => 409,
+                'message' => 'Nopol sudah digunakan'
+            ], 409);
+        }
+
+        $fotoPath = $request->file('foto_truk')->store('foto_truk', 'public');
+        $fotoUrl  = url('storage/' . $fotoPath);
+        $qrUrl    = null;
+
+        $result = DB::select('SELECT * FROM create_truk(?, ?, ?, ?, ?)', [
+            $request->nama_user,
+            $request->input_nopol,
+            $request->volume,
+            $fotoUrl,
+            $qrUrl
+        ]);
+
+        $truk = $result[0];
+
+        $qrData = $truk->uid_truk;
+        $qrName = $truk->uid_truk . '.png';
+        $qrPath = 'qr_code/' . $qrName;
+
+        $qrResult = Builder::create()
+            ->writer(new PngWriter())
+            ->data($qrData)
+            ->size(300)
+            ->margin(10)
+            ->build();
+
+        Storage::disk('public')->put($qrPath, $qrResult->getString());
+        $qrUrl = url('storage/' . $qrPath);
+
+        DB::table('truks')->where('uid_truk', $truk->uid_truk)->update([
+            'qr_code' => $qrUrl
+        ]);
+
+        $truk->qr_code = $qrUrl;
+
+        return response()->json([
+            'status'      => 201,
+            'message'     => 'Data Truk berhasil disimpan',
+            'download_qr' => route('download.qr', ['filename' => $qrName]),
+            'data'        => $truk
+        ], 201);
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'status'  => 422,
+            'message' => 'Validasi gagal',
+            'errors'  => $e->errors()
+        ], 422);
+    } catch (\Exception $e) {
+        $msg = $e->getMessage();
+
+        if (str_contains($msg, 'User tidak ditemukan')) {
+            $msg = 'User tidak ditemukan';
+        } elseif (str_contains($msg, 'User sudah memiliki truk')) {
+            $msg = 'User sudah memiliki truk';
+        } elseif (str_contains($msg, 'User sudah digunakan di truk lain')) {
+            $msg = 'User sudah digunakan di truk lain';
+        } elseif (str_contains($msg, 'Nopol sudah digunakan')) {
+            $msg = 'Nopol sudah digunakan';
+        }
+
+        return response()->json([
+            'status'  => 500,
+            'message' => $msg
+        ], 500);
     }
+}  
     
-    public function update(Request $request, $uid_truk)
+public function update(Request $request, $uid_truk)
 {
     try {
         $validatedData = $request->validate([
@@ -165,12 +191,20 @@ class TrukController extends Controller
 
         $truk = Truk::where('uid_truk', $uid_truk)->first();
         if (!$truk) {
-            return response()->json(['status' => 404, 'message' => 'Data truk tidak ditemukan'], 404);
+            return response()->json([
+                'status'  => 404,
+                'message' => 'Data truk tidak ditemukan',
+                'errors'  => ['detail' => 'Data truk tidak ditemukan']
+            ], 404);
         }
 
         $user = User::where('nama', $validatedData['nama_user'])->first();
         if (!$user) {
-            return response()->json(['status' => 404, 'message' => 'User tidak ditemukan'], 404);
+            return response()->json([
+                'status'  => 404,
+                'message' => 'User tidak ditemukan',
+                'errors'  => ['detail' => 'User tidak ditemukan']
+            ], 404);
         }
 
         $fotoUrl = $truk->foto_truk;
@@ -214,7 +248,11 @@ class TrukController extends Controller
         ]);
 
         if (empty($result)) {
-            return response()->json(['status' => 500, 'message' => 'Gagal mengupdate truk'], 500);
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Gagal mengupdate truk',
+                'errors'  => ['detail' => 'Gagal mengupdate truk']
+            ], 500);
         }
 
         return response()->json([
@@ -225,24 +263,30 @@ class TrukController extends Controller
         ], 200, [], JSON_UNESCAPED_SLASHES);
 
     } catch (\Illuminate\Validation\ValidationException $e) {
-        return response()->json(['status' => 422, 'message' => 'Validasi gagal', 'errors' => $e->errors()], 422);
+        return response()->json([
+            'status'  => 422,
+            'message' => 'Validasi gagal',
+            'errors'  => $e->errors()
+        ], 422);
     } catch (\Exception $e) {
         \Log::error('Gagal update truk: ' . $e->getMessage());
 
         $errorMsg = $e->getMessage();
-        $userMessage = str_contains($errorMsg, 'Nopol sudah digunakan') 
-    ? 'Nopol sudah digunakan oleh truk lain' 
-    : (str_contains($errorMsg, 'User sudah digunakan') 
-        ? 'User sudah digunakan di truk lain' 
-        : 'Terjadi kesalahan saat mengupdate data truk');
-
+        $userMessage = match (true) {
+            str_contains($errorMsg, 'Nopol sudah digunakan') => 'Nopol sudah digunakan oleh truk lain.',
+            str_contains($errorMsg, 'User sudah digunakan')  => 'User sudah digunakan di truk lain.',
+            str_contains($errorMsg, 'User tidak ditemukan')  => 'User tidak ditemukan.',
+            default                                           => 'Terjadi kesalahan saat mengupdate data truk.'
+        };
 
         return response()->json([
-            'status' => 500,
-            'message' => $userMessage
+            'status'  => 500,
+            'message' => $userMessage,
         ], 500);
     }
 }
+
+
     
     public function downloadQR($filename)
     {

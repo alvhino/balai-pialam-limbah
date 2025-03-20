@@ -13,10 +13,10 @@ return new class extends Migration
     {
         Schema::create('transaksi', function (Blueprint $table) {
             $table->uuid('uid_transaksi')->primary();
-            $table->uuid('uid_kunjungan');
+            $table->uuid('uid_truk');
             $table->uuid('uid_ph');
             $table->uuid('uid_volume');
-            $table->decimal('total', 10, 2);
+            $table->decimal('total', 18, 2);
             $table->timestamps();
         });
     }

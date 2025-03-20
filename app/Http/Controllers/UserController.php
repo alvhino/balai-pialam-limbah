@@ -30,7 +30,7 @@ class UserController extends Controller
 
         return response()->json([
             'status'  => 200,
-            'message' => 'Berhasil menampilkan semua user',
+            'message' => 'Data user tersedia',
             'data'    => $data,
         ], 200);
 
@@ -263,5 +263,70 @@ public function destroy($uid_user)
         ], 500);
     }
 }
+
+public function get_data(Request $request)
+{
+    try {
+        $filterStart = null;
+        $filterEnd = null;
+
+        if ($request->has('hari')) {
+            $filterStart = $filterEnd = date('Y-m-d');
+        } elseif ($request->has('minggu')) {
+            $filterStart = now()->startOfWeek()->format('Y-m-d');
+            $filterEnd = now()->endOfWeek()->format('Y-m-d');
+        } elseif ($request->has('bulan')) {
+            if ($request->bulan) {
+                $filterStart = date('Y') . '-' . str_pad($request->bulan, 2, '0', STR_PAD_LEFT) . '-01';
+                $filterEnd = date('Y') . '-' . str_pad($request->bulan, 2, '0', STR_PAD_LEFT) . '-' . date('t', strtotime($filterStart));
+            } else {
+                $filterStart = now()->startOfMonth()->format('Y-m-d');
+                $filterEnd = now()->endOfMonth()->format('Y-m-d');
+            }
+        } elseif ($request->has('tahun')) {
+            $tahun = $request->tahun ?? date('Y');
+            $filterStart = $tahun . '-01-01';
+            $filterEnd = $tahun . '-12-31';
+        }
+
+        $result = DB::select("SELECT * FROM get_data_pendapatan(?, ?)", [$filterStart, $filterEnd]);
+
+        if (count($result) === 0) {
+            return response()->json([
+                'status' => 200,
+                'ringkasan' => [],
+                'message' => 'Data kosong',
+                'data' => [],
+            ]);
+        }
+
+        $ringkasan = [
+            'rata_rata_durasi' => $result[0]->rata_rata_durasi_menit,
+            'total_pendapatan' => $result[0]->total_pendapatan,
+            'jumlah_pengunjung' => $result[0]->jumlah_pengunjung
+        ];
+
+        $data = array_map(function ($item) {
+            unset($item->rata_rata_durasi_menit);
+            unset($item->total_pendapatan);
+            unset($item->jumlah_pengunjung);
+            return $item;
+        }, $result);
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Data berhasil diambil',
+            'ringkasan' => [$ringkasan],
+            'data' => $data
+        ]);
+    } catch (\Throwable $th) {
+        return response()->json([
+            'status' => 500,
+            'message' => 'Gagal mengambil data',
+            'error' => $th->getMessage()
+        ], 500);
+    }
+}
+
 
 }
